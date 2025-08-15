@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe FeatureFlagsController, type: :controller do
   describe '#index' do
     let(:user) { VCAP::CloudController::User.make }
-    let(:flag_defaults) { VCAP::CloudController::FeatureFlag::DEFAULT_FLAGS }
+    let(:flag_defaults) { VCAP::CloudController::FeatureFlag.default_flags }
     let(:flag_names_sorted) { flag_defaults.keys.sort.map(&:to_s) }
 
     describe 'permissions by role' do
@@ -86,9 +86,7 @@ RSpec.describe FeatureFlagsController, type: :controller do
     let(:user) { VCAP::CloudController::User.make }
 
     before do
-      stub_const('VCAP::CloudController::FeatureFlag::DEFAULT_FLAGS', {
-                   flag1: false
-                 })
+      allow(VCAP::CloudController::FeatureFlag).to receive(:default_flags).and_return({ flag1: false })
       set_current_user(user)
     end
 
@@ -129,9 +127,7 @@ RSpec.describe FeatureFlagsController, type: :controller do
     let(:feature_flag_name) { 'flag1' }
 
     before do
-      stub_const('VCAP::CloudController::FeatureFlag::DEFAULT_FLAGS', {
-                   flag1: false
-                 })
+      allow(VCAP::CloudController::FeatureFlag).to receive(:default_flags).and_return({ flag1: false })
       set_current_user(user)
     end
 

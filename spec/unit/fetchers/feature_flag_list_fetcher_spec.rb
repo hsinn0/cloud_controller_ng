@@ -23,7 +23,7 @@ module VCAP::CloudController
 
       context 'when not filtering' do
         it 'returns an array of all FeatureFlags' do
-          flag_names = VCAP::CloudController::FeatureFlag::DEFAULT_FLAGS.keys.sort.map(&:to_s)
+          flag_names = VCAP::CloudController::FeatureFlag.default_flags.keys.sort.map(&:to_s)
           expect(subject.fetch_all(message).map(&:name)).to match_array(flag_names)
         end
       end

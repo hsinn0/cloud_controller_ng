@@ -45,7 +45,7 @@ module VCAP::CloudController
       validates_unique :name
       validates_presence :enabled
 
-      validates_includes DEFAULT_FLAGS.keys.map(&:to_s), :name
+      validates_includes FeatureFlag.default_flags.keys.map(&:to_s), :name
       validates_format FF_ERROR_MESSAGE_REGEX, :error_message if error_message
     end
 
@@ -57,7 +57,7 @@ module VCAP::CloudController
       enabled = if feature_flag
                   feature_flag.enabled
                 else
-                  DEFAULT_FLAGS.fetch(feature_flag_name)
+                  @@default_flags.fetch(feature_flag_name)
                 end
 
       if raise_unless_enabled && !enabled
@@ -86,6 +86,20 @@ module VCAP::CloudController
       VCAP::CloudController::SecurityContext.admin_read_only?
     end
 
+    def self.update_default_flags(feature_flag_overrides)
+      raise "Invalid feature flag name(s): #{feature_flag_overrides}" unless feature_flag_overrides.keys.to_set <= DEFAULT_FLAGS.keys.to_set
+      raise "Invalid feature flag value(s): #{feature_flag_overrides}" unless feature_flag_overrides.values.all? { |item| item.is_a?(TrueClass) || item.is_a?(FalseClass) }
+
+      @@default_flags = @@default_flags.merge(feature_flag_overrides)
+    end
+
+    def self.default_flags
+      @@default_flags
+    end
+
+    @@default_flags = DEFAULT_FLAGS
+
     private_class_method :admin?
+    private_constant :DEFAULT_FLAGS
   end
 end

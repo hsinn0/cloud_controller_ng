@@ -38,7 +38,7 @@ module VCAP::CloudController
       describe 'error message' do
         subject(:feature_flag) { FeatureFlag.make }
 
-        it 'shoud allow standard ascii characters' do
+        it 'should allow standard ascii characters' do
           feature_flag.error_message = "A -_- word 2!?()''&+."
           expect do
             feature_flag.save
@@ -89,7 +89,7 @@ module VCAP::CloudController
 
     describe '.enabled?' do
       let(:key) { :user_org_creation }
-      let(:default_value) { FeatureFlag::DEFAULT_FLAGS[key] }
+      let(:default_value) { FeatureFlag.default_flags[key] }
 
       context 'when the feature flag is overridden' do
         before do
@@ -123,7 +123,7 @@ module VCAP::CloudController
       context 'when logged in as an admin' do
         before do
           allow(VCAP::CloudController::SecurityContext).to receive(:admin?).and_return(true)
-          stub_const('VCAP::CloudController::FeatureFlag::DEFAULT_FLAGS', { normal: false, blahrgha: false })
+          allow(VCAP::CloudController::FeatureFlag).to receive(:default_flags).and_return({ normal: false, blahrgha: false })
           stub_const('VCAP::CloudController::FeatureFlag::ADMIN_SKIPPABLE', [:blahrgha])
         end
 
@@ -147,7 +147,7 @@ module VCAP::CloudController
       context 'when logged in as an admin read only' do
         before do
           allow(VCAP::CloudController::SecurityContext).to receive(:admin_read_only?).and_return(true)
-          stub_const('VCAP::CloudController::FeatureFlag::DEFAULT_FLAGS', { normal: false, potato: false, tomato: false })
+          allow(VCAP::CloudController::FeatureFlag).to receive(:default_flags).and_return({ normal: false, potato: false, tomato: false })
           stub_const('VCAP::CloudController::FeatureFlag::ADMIN_READ_ONLY_SKIPPABLE', [:potato])
           stub_const('VCAP::CloudController::FeatureFlag::ADMIN__SKIPPABLE', [:tomato])
         end
@@ -222,6 +222,135 @@ module VCAP::CloudController
           expect do
             FeatureFlag.raise_unless_enabled!(:bogus_feature_flag)
           end.to raise_error(FeatureFlag::UndefinedFeatureFlagError, /bogus_feature_flag/)
+        end
+      end
+    end
+
+    describe 'default flag override in config' do
+      let(:key) { :diego_docker }
+      let(:default_value) { FeatureFlag.default_flags[key] }
+
+      context 'when the default is not overridden in config' do
+        context 'and the value is not set by admin' do
+          it 'returns the default value' do
+            expect(FeatureFlag.find(name: key.to_s)).to be_nil
+            expect(FeatureFlag.enabled?(key)).to be default_value
+          end
+        end
+
+        context 'and the value is set by admin' do
+          let(:admin_value) { !default_value }
+          let(:admin_override) { FeatureFlag.create(name: key.to_s, enabled: admin_value) }
+          let(:admin_override_cleanup) { admin_override.destroy }
+
+          before do
+            admin_override
+          end
+
+          after do
+            admin_override_cleanup
+          end
+
+          it 'returns the admin-set value' do
+            expect(FeatureFlag.find(name: key.to_s)[:enabled]).to eq admin_value
+            expect(FeatureFlag.enabled?(key)).to be admin_value
+          end
+        end
+      end
+
+      context 'when the default is overridden in config' do
+        let(:config_value) { !default_value }
+
+        before do
+          FeatureFlag.update_default_flags({ key => config_value })
+        end
+
+        after do
+          FeatureFlag.update_default_flags({ key => default_value })
+        end
+
+        context 'and the value is not set by admin' do
+          it 'returns the overridden default value' do
+            expect(FeatureFlag.find(name: key.to_s)).to be_nil
+            expect(FeatureFlag.enabled?(key)).to be config_value
+          end
+        end
+
+        context 'and the value is set by admin' do
+          let(:admin_value) { !config_value }
+          let(:admin_override) { FeatureFlag.create(name: key.to_s, enabled: admin_value) }
+          let(:admin_override_cleanup) { admin_override.destroy }
+
+          before do
+            admin_override
+          end
+
+          after do
+            admin_override_cleanup
+          end
+
+          it 'returns the admin-set value' do
+            expect(FeatureFlag.find(name: key.to_s)[:enabled]).to eq admin_value
+            expect(FeatureFlag.enabled?(key)).to be admin_value
+          end
+        end
+      end
+    end
+
+    describe '.update_default_flags' do
+      context 'with invalid flags' do
+        it 'raises an error for the one and only invalid name' do
+          expect do
+            FeatureFlag.update_default_flags({ an_invalid_name: true })
+          end.to raise_error(/Invalid feature flag name\(s\)/)
+        end
+
+        it 'raises an error for a mix of valid and invalid names' do
+          expect do
+            FeatureFlag.update_default_flags({ diego_docker: true, an_invalid_name: true })
+          end.to raise_error(/Invalid feature flag name\(s\)/)
+        end
+
+        it 'raises an error for all invalid names' do
+          expect do
+            FeatureFlag.update_default_flags({ invalid_name1: true, invalid_name2: false })
+          end.to raise_error(/Invalid feature flag name\(s\)/)
+        end
+
+        it 'raises an error for invalid values' do
+          expect do
+            FeatureFlag.update_default_flags({ diego_docker: 'an invalid value', user_org_creation: false })
+          end.to raise_error(/Invalid feature flag value\(s\)/)
+        end
+      end
+
+      context 'with valid flags' do
+        let(:default_diego_docker_value) { FeatureFlag.default_flags[:diego_docker] }
+        let(:default_user_org_creation_value) { FeatureFlag.default_flags[:user_org_creation] }
+
+        before do
+          expect do
+            FeatureFlag.update_default_flags({ diego_docker: !default_diego_docker_value, user_org_creation: !default_user_org_creation_value })
+          end.not_to raise_error
+        end
+
+        after do
+          FeatureFlag.update_default_flags({ diego_docker: default_diego_docker_value, user_org_creation: default_user_org_creation_value })
+        end
+
+        it 'updates values' do
+          expect(FeatureFlag.default_flags[:diego_docker]).to be !default_diego_docker_value
+          expect(FeatureFlag.default_flags[:user_org_creation]).to be !default_user_org_creation_value
+          expect(FeatureFlag.enabled?(:diego_docker)).to be !default_diego_docker_value
+          expect(FeatureFlag.enabled?(:user_org_creation)).to be !default_user_org_creation_value
+        end
+      end
+
+      context 'with empty flags' do
+        it 'no effect' do
+          flags = FeatureFlag.default_flags
+          FeatureFlag.update_default_flags({})
+          expect(FeatureFlag.default_flags).to eq(flags)
         end
       end
     end

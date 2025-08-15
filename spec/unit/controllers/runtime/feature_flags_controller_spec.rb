@@ -71,11 +71,7 @@ module VCAP::CloudController
 
     describe 'GET /v2/config/feature_flags' do
       before do
-        stub_const('VCAP::CloudController::FeatureFlag::DEFAULT_FLAGS', {
-                     flag1: false,
-                     flag2: true,
-                     flag3: false
-                   })
+        allow(VCAP::CloudController::FeatureFlag).to receive(:default_flags).and_return({ flag1: false, flag2: true, flag3: false })
       end
 
       context 'when there are no overrides' do
@@ -149,9 +145,7 @@ module VCAP::CloudController
 
     describe 'GET /v2/config/feature_flags/:name' do
       before do
-        stub_const('VCAP::CloudController::FeatureFlag::DEFAULT_FLAGS', {
-                     flag1: false
-                   })
+        allow(VCAP::CloudController::FeatureFlag).to receive(:default_flags).and_return({ flag1: false })
       end
 
       context 'when there are no overrides' do

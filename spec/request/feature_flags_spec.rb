@@ -4,7 +4,7 @@ RSpec.describe 'Feature Flags Request' do
   describe 'GET /v3/feature_flags' do
     let(:user) { make_user }
     let(:headers) { headers_for(user) }
-    let(:flag_defaults) { VCAP::CloudController::FeatureFlag::DEFAULT_FLAGS }
+    let(:flag_defaults) { VCAP::CloudController::FeatureFlag.default_flags }
     let(:flag_names_sorted) { flag_defaults.keys.sort }
 
     it 'returns feature flags in alphabetical order' do

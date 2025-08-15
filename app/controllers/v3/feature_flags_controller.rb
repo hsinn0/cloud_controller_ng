@@ -50,7 +50,7 @@ class FeatureFlagsController < ApplicationController
   end
 
   def find_flag(flag_name)
-    default_flag = FeatureFlag::DEFAULT_FLAGS.map do |name, value|
+    default_flag = FeatureFlag.default_flags.map do |name, value|
       FeatureFlag.new(name: name.to_s, enabled: value) if name.to_s == flag_name
     end.compact
 

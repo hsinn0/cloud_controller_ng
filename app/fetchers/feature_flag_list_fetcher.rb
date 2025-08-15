@@ -11,7 +11,7 @@ module VCAP::CloudController
         if message.updated_ats
           db_feature_flags = filter(message, db_feature_flags).all
         else
-          FeatureFlag::DEFAULT_FLAGS.collect do |feature_flag_name, default_enabled_state|
+          FeatureFlag.default_flags.collect do |feature_flag_name, default_enabled_state|
             db_flag = db_feature_flags.find { |feature_flag| feature_flag.name == feature_flag_name.to_s }
             db_flag || FeatureFlag.new(name: feature_flag_name, enabled: default_enabled_state)
           end

@@ -17,7 +17,7 @@ module VCAP::CloudController
       db_feature_flags = {}
       FeatureFlag.all.each { |feature| db_feature_flags[feature.name.to_sym] = feature }
 
-      feature_flags = FeatureFlag::DEFAULT_FLAGS.keys.map do |key|
+      feature_flags = FeatureFlag.default_flags.keys.map do |key|
         feature_flag = db_feature_flags[key]
 
         FeatureFlagPresenter.new(feature_flag, key, self.class.path).to_hash
@@ -33,7 +33,7 @@ module VCAP::CloudController
     def read(name)
       validate_access(:read, model)
 
-      raise CloudController::Errors::ApiError.new_from_details('FeatureFlagNotFound', name) unless FeatureFlag::DEFAULT_FLAGS.key?(name.to_sym)
+      raise CloudController::Errors::ApiError.new_from_details('FeatureFlagNotFound', name) unless FeatureFlag.default_flags.key?(name.to_sym)
 
       feature_flag = FeatureFlag.find(name:)
 
@@ -47,7 +47,7 @@ module VCAP::CloudController
     def update_feature_flag(name)
       validate_access(:update, model)
 
-      raise CloudController::Errors::ApiError.new_from_details('FeatureFlagNotFound', name) unless FeatureFlag::DEFAULT_FLAGS.key?(name.to_sym)
+      raise CloudController::Errors::ApiError.new_from_details('FeatureFlagNotFound', name) unless FeatureFlag.default_flags.key?(name.to_sym)
 
       feature_flag_attributes = Oj.load(body)
 
